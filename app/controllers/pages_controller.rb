@@ -7,6 +7,15 @@ class PagesController < ApplicationController
 	def about
 	end
 
+	def home
+		respond_to do |format|
+			format.html
+			format.json do
+				render :json => Page.last
+			end # json
+		end # respond_to
+	end # home
+	
 	def show
 		@page = Page.find params[:id]
 		respond_to { |f| f.json }
@@ -14,11 +23,15 @@ class PagesController < ApplicationController
 
 	def index
 		@pages = Page.limit( params[:limit].to_i ).offset( params[:offset].to_i )
-		respond_to { |f| f.json }
+		respond_to { |f| f.json { render :json => @pages } }
 	end # show
 
 	def create
-		@page = current_user.create params[:page]
+		@page = current_user.pages.create! params[:page]
+		Page.attr_accessible[:default].each do |key|
+			next if key.blank?
+			raise "#{key} => #{@page[key.to_sym]} error" if @page[key.to_sym].nil? || @page[key.to_sym].blank?
+		end # each key
 		render_or_fail @page
 	end # create
 
@@ -35,7 +48,7 @@ class PagesController < ApplicationController
 	private
 		def render_or_fail( condition = false )
 			if condition
-				respond_to { |f| f.json { render "pages/show" } }
+				respond_to { |f| f.json { render :json => @page } }
 			else
 				respond_to { |f| f.json { render "shared/fail" } }
 			end # if update

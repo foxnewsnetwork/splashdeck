@@ -1,0 +1,5 @@
+pages @pages do |page|
+	id page.id
+	user_id page.user_id
+	title page.title
+end 

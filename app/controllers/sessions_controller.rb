@@ -3,9 +3,8 @@ class SessionsController < Devise::SessionsController
 		resource = warden.authenticate!(auth_options)
 		set_flash_message(:notice, :signed_in) if is_navigational_format?
 		sign_in(resource_name, resource)
-		@user = current_user
 		if user_signed_in?
-			respond_to { |f| f.json { render "users/show" } }
+			respond_to { |f| f.json { render :json => { :success => true } } }
 		else
 			respond_to { |f| f.json { render "shared/fail" } }
 		end # success

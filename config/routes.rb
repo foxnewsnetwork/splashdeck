@@ -1,15 +1,14 @@
 Splashdesk::Application.routes.draw do
-  
 
-
-  resources :pages do
-  	resources :stickies
+  resources :pages, :only => [ :show, :index, :update, :destroy, :create ] do
+  	resources :stickies, :only => [ :show, :index, :update, :destroy, :create ]
   end # pages
 
   devise_for :users, :controllers => { :sessions => "sessions" }
 
   get "pages/legal"
   get "pages/about"
+  get "pages/home"
 
   # The priority is based upon order of creation:
   # first created -> highest priority.
@@ -60,7 +59,7 @@ Splashdesk::Application.routes.draw do
 
   # You can have the root of your site routed with "root"
   # just remember to delete public/index.html.
-  root :to => 'pages#about'
+  root :to => 'pages#home'
 
   # See how all your routes lay out with "rake routes"
 

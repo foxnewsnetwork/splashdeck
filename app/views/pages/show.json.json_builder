@@ -1,0 +1,6 @@
+faggot "faggot"
+id @page.id
+user_id @page.user_id
+title @page.title
+created_at @page.created_at
+updated_at @page.updated_at

@@ -4,6 +4,7 @@ gem 'rails', '3.2.8'
 gem "thin", '~> 1.4.1'
 gem 'devise'
 gem 'json_builder'
+
 group :development do
   gem 'rspec-rails' , '2.11.0'
   gem 'faker', '~>1.0.1'

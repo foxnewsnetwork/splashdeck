@@ -1,0 +1,6 @@
+id @sticky.id
+user_id @sticky.user_id
+page_id @sticky.page_id
+category @sticky.category
+content @sticky.content
+metadata @sticky.metadata
