@@ -12,6 +12,7 @@ p.comment_person {
 ul.desktop-toolbar{ 
 	position: absolute;
 	bottom : 1em;
+	right : 1em;
 }
 ul.desktop-toolbar li{ 
 	display: inline-block;
@@ -20,3 +21,11 @@ ul.desktop-toolbar li{
 .ui-resizable-handle { position: absolute;font-size: 0.01px; display: none; background-color: #f00}
 .ui-resizable-disabled .ui-resizable-handle, .ui-resizable-autohide .ui-resizable-handle { display: none; }
 .ui-resizable-se { cursor: se-resize; width: 10px; height: 10px; right: 0px; bottom: 10px; }
+
+ul.flash-container { 
+	position: absolute;
+	list-style: none;
+	top: 5em;
+	left: 5%;
+	width: 90%;
+}

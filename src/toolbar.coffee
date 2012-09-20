@@ -2,6 +2,7 @@
 class ToolbarView extends Backbone.View
 	tagName: "ul" ,
 	className: "desktop-toolbar ui-widget-content" ,
+	mode: "normal" ,
 	buttons: [
 		{ "id" : "pages", "thing" : "Pages", "icon" : "book icon-white", "color" : "info" } ,
 		{ "id" : "page", "thing" : "New Page", "icon" : "star icon-white", "color" : "success" } ,
@@ -12,7 +13,7 @@ class ToolbarView extends Backbone.View
 		{ "id" : "text", "thing" : "Text block", "icon" : "font", "color" : "default" }
 	] , # buttons
 	template: _.template("
-		<li><a href='#<%= id %>' id='btn-<%= id %>' class='btn btn-mini btn-<%= color %>' rel='tooltip' title='<%= thing %>' data-toggle='modal'>
+		<li target='<%= id %>'><a href='#<%= id %>' id='btn-<%= id %>' class='btn btn-mini btn-<%= color %>' rel='tooltip' title='<%= thing %>' data-toggle='modal'>
 			<i class='icon-<%= icon %>'></i>
 		</li></a>
 	") , # template
@@ -25,7 +26,7 @@ class ToolbarView extends Backbone.View
 		"click #btn-image" : "image_modal" ,
 		"click #btn-text" :"text_modal"
 	, # events
-	render: (action_callbacks) ->
+	render:  ->
 		if @ready?
 			return
 		# Step 1: Appending the template
@@ -34,7 +35,7 @@ class ToolbarView extends Backbone.View
 			switch button["id"]
 				when "comment", "login","code","image", "text"
 					modal = new ModalView()
-					m_id = modal.render button['id'], action_callbacks[button['id']]
+					m_id = modal.render button['id']
 					this.$("#btn-#{button['id']}").attr "data-target", "##{m_id}"
 				# when
 			# switch
@@ -45,8 +46,29 @@ class ToolbarView extends Backbone.View
 		$("a[rel='tooltip']").tooltip()
 		$(@el).scrollspy()
 		@ready = true
+		
+		# Step 3: Listen to events
+		@unadminify()
+		Backbone.Events.on( "session:login", @adminify )
 	, # render
 	
+	adminify: =>
+		@mode = "admin"
+		for target in ['text','image','code','page'] 
+			this.$("li[target='#{target}']").show()
+		# for
+	, # adminify
+	
+	unadminify: =>
+		@mode = "normal"
+		for target in ['text','image','code','page'] 
+			this.$("li[target='#{target}']").hide()
+		# for
+	, # unadminify
+	
+	###
+	# Modal Section
+	###
 	pages_modal: ->
 		
 	, # pages_modal
@@ -75,8 +97,8 @@ class ToolbarView extends Backbone.View
 		@open_modal( "code" )
 	, # code_modal
 	
-	open_modal: (type) ->
-		$("#{type}-modal").modal()	
+	open_modal: (category) ->
+		$("#{category}-modal").modal()	
 	, # open_modal
 # Toolbar
 

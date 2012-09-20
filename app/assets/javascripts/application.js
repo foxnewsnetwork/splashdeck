@@ -13,11 +13,11 @@
 //= require jquery
 //= require jquery_ujs
 //= require jquery.ui.all
+//= require highlight.min
 //= require bootstrap
 //= require underscore-min
 //= require backbone-min
 //= require mocha
 //= require expect
 //= require chai
-//= require mocha-runner
 //= require_tree .

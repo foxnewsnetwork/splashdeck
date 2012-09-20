@@ -3,16 +3,23 @@ fs = require 'fs'
 
 appFiles = [
 	# omit src/ and .coffee to make the below lines a little shorter
+	'sync' ,
+	'flash' ,
+	'session' ,
 	'sticky' ,
 	'stickies' ,
-	'paper' ,
+	'page' ,
 	'modal' ,
 	'toolbar',
 	'desk' 
 ]
 
 testFiles = [
-	"text"
+	'mocha_runner' ,
+	"desk" ,
+	"toolbar" ,
+	"session" ,
+	'page'
 ]
 
 outputDir = "app/assets/javascripts"

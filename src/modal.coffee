@@ -13,33 +13,33 @@ class ModalView extends Backbone.View
 	, # input_sanitizor
 	@modal_contents:
 		comment: [
-			{ name: "from", type: "text", placeholder: "You...", style: "input-medium" }
-			{ name: "content", type: "text", placeholder: "My comment...", style: "input-large" }	 ,
+			{ name: "from", category: "text", placeholder: "You...", style: "input-medium" }
+			{ name: "content", category: "text", placeholder: "My comment...", style: "input-large" }	 ,
 		], # comment
 		login: [ 
-			{ name: "username", type: "text", placeholder: "Username or email...", style: "input-large" }	 ,
-			{ name: "password", type: "password", placeholder: "", style: "input-large" }
+			{ name: "username", category: "text", placeholder: "Username or email...", style: "input-large" }	 ,
+			{ name: "password", category: "password", placeholder: "", style: "input-large" }
 		], # login
 		code: [
-			{ name: "code", type: "text", placeholder: "", style: "input-large" }	 ,
-			{ name: "language", type: "text", placeholder: "e.g. Ruby", style: "input-small" }
+			{ name: "code", category: "text", placeholder: "", style: "input-large" }	 ,
+			{ name: "language", category: "text", placeholder: "e.g. Ruby", style: "input-small" }
 		], # code
 		text: [ 
-			{ name: "text", type: "text", placeholder: "Some text...", style: "input-xlarge" }	 ,
-			{ name: "style", type: "text", placeholder: "font-family: Arial;", style: "input-xlarge" }
+			{ name: "text", category: "text", placeholder: "Some text...", style: "input-xlarge" }	 ,
+			{ name: "style", category: "text", placeholder: "font-family: Arial;", style: "input-xlarge" }
 		], # text
 		image: [ 
-			{ name: "image", type: "url", placeholder: "Link to your image...", style: "input-xlarge" }	,
-			{ name: "caption", type: "text", placeholder: "Image caption", style: "input-xlarge" }	
+			{ name: "image", category: "url", placeholder: "Link to your image...", style: "input-xlarge" }	,
+			{ name: "caption", category: "text", placeholder: "Image caption", style: "input-xlarge" }	
 		] , # image
 	, # modal_content
-	@generate_form: (type) ->
+	@generate_form: (category) ->
 		label = _.template "<label for='<%= name %>' class='control-label'><%= name %></label>"
-		input = _.template "<input type='<%= type %>' placeholder='<%= placeholder %>' name='<%= name %>' class='<%= style %>' />"
+		input = _.template "<input category='<%= category %>' placeholder='<%= placeholder %>' name='<%= name %>' class='<%= style %>' />"
 		textarea = _.template "<textarea name='<%= name %>'></textarea>"
 		output = "<fieldset><div class='control-group'>"
-		things = ModalView.modal_contents[type]
-		switch type
+		things = ModalView.modal_contents[category]
+		switch category
 			when "comment"
 				output += "#{label things[0]}#{input things[0]}" 	
 				output += "#{label things[1]}#{textarea things[1]}" 
@@ -56,7 +56,7 @@ class ModalView extends Backbone.View
 				for thing in things
 					output += "#{label thing}#{input thing}" 
 			else
-				throw "Not Support Type ERROR #{type}"
+				throw "Not Support category ERROR #{category}"
 		# switch
 		output += "</fieldset></div>"
 		return output
@@ -88,23 +88,18 @@ class ModalView extends Backbone.View
 	") , # template
 	modal_action: ->
 		input = {}
-		for set in ModalView.modal_contents[@type]
+		for set in ModalView.modal_contents[@category]
 			name = set['name']
 			input[name] = ModalView.input_sanitizor this.$("[name='#{name}']").val()
 		# for
-		
 		$(@el).modal 'hide'
-		
-		if !@action_callback?
-			throw "No Action Callback Error #{@type}, No Idea what submission of #{JSON.stringify input} is suppose to do"
-		# if no callback
-		
-		@action_callback input
+		input['category'] = @category		
+		Backbone.Events.trigger "modal:action", input		
 	, # modal_action
-	render: (type, @action_callback)->
+	render: (category)->
 		# Step 1: Generate the forms
-		$(@el).html @template(ModalView.form[type])
-		@type = type
+		$(@el).html @template(ModalView.form[category])
+		@category = category
 				
 		# Step 2: Attach to the body
 		$(@el).appendTo "body"
@@ -113,14 +108,14 @@ class ModalView extends Backbone.View
 		$(@el).hide()
 
 		# Step 4: Attach attributes
-		# $(@el).attr "id", "#{type}-modal"
-		for attr in [{ id: "#{type}-modal"}, { tabindex: -1}, { role: "dialog"}, {"aria-labelledby":"my#{type}label"}, {"aria-hidden":true}]
+		# $(@el).attr "id", "#{category}-modal"
+		for attr in [{ id: "#{category}-modal"}, { tabindex: -1}, { role: "dialog"}, {"aria-labelledby":"my#{category}label"}, {"aria-hidden":true}]
 			for key, val of attr
 				$(@el).attr key, val
 			# key, val
 		# attr
 		
 		# Step 5: GTFO	
-		return "#{type}-modal"
+		return "#{category}-modal"
 	, # render
 # ModalView

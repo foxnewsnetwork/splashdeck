@@ -1,24 +1,35 @@
 
 class StickyModel extends Backbone.Model
+	@attr_accessible: [ 
+		'x','y','width','height','category','content','metadata'
+	] , # attr_accessible
+	name: "sticky" ,
+	user_id: undefined ,
+	page_id: undefined ,
 	defaults :
-		"username" : "anonymous" ,
-		"password" : undefined ,
-		"paper_id" : undefined ,
 		"x" : undefined ,
 		"y" : undefined ,
 		"width" : 300 ,
 		"height" : 50 ,
-		"type" : "text" ,
+		"category" : "text" ,
 		"content" : undefined ,
 		"metadata" : ""
 	, # defaults
-	urlRoot: "/sticky" ,
+	serialize: ->
+		data = {}
+		for key in StickyModel.attr_accessible
+			data[key] = @get key
+		return data
+	, # serialize
 	initialize: ->
-		for v in ['x','y']
-			if !@get(v)?
-				@set v, 5 + 65 * Math.random()
-		if @get( "metadata" ) == ""
-			switch @get "type"
+		unless @get("x")? and @get("y")?
+			position = 
+				x: 5 + 65 * Math.random() ,
+				y: 5 + 65 * Math.random()
+			# position
+			@set( position, { silent: true } )
+		if @get( "metadata" ) is ""
+			switch @get "category"
 				when "image"
 					@set "metadata", "No caption available"
 				when "code"
@@ -26,11 +37,21 @@ class StickyModel extends Backbone.Model
 				when "comment"
 					@set "metadata", "anonymous"
 			# switch
-		# if no data
-		@on "change", =>
-			@save()
-		# on change
+		@setup_view()
 	, # initialize
+	setup_view: ->
+		@view = new StickyView( model : this )
+		@view.update_callback = (data) =>
+			@save( data ) if @id?
+		# update_callback
+		@view.render()
+	, # setup_view
+	activate: ->
+		@view.show()
+	, # activate
+	deactivate: ->
+		@view.hide()
+	, # deactivate
 # StickyModel
 
 class StickyView extends Backbone.View
@@ -61,32 +82,35 @@ class StickyView extends Backbone.View
 		"click .close" : "destroy"
 	, # events
 	parent: $( "body" ),
+	update_callback: (data) ->
+		throw "UPDATE CALLBACK NOT IMPLEMENTED YOU MORON ERROR"
+	, # update_callback
 	render: ->
 		if !@model?
 			throw "Calling View Without a Model Error"
 			return this
 		# if no model
 		if !@ready?
-			switch @model.get "type"
+			switch @model.get "category"
 				when "text", "code", "image", "comment"
-					$(@el).append( @template[@model.get "type"](@model.toJSON()) )
+					$(@el).append( @template[@model.get "category"](@model.toJSON()) )
 					$(@el).css "position", "absolute"
 					$(@el).css "display", "inline-block"
 					@parent.append( $(@el) );
 					@ready = true
 					this.$("[rel='tooltip']").tooltip()
-					if @model.get( "type" ) == "code"
+					if @model.get( "category" ) == "code"
 						hljs.highlightBlock( this.$("code").get()[0] )
 					this.$(".resize-layer").resizable
 						"alsoResize" : this.$(".sticky_content") ,
 						"stop" : (e, ui) =>
-							@model.set @serialize()
+							@update_callback @serialize()
 							return false
 						# stop
 					# resizable
 					$(@el).draggable 
 						"stop" : (e, ui) =>
-							@model.set @serialize()
+							@update_callback @serialize()
 							return true
 						# stop
 					# draggable
@@ -116,4 +140,10 @@ class StickyView extends Backbone.View
 		@remove()
 		@model.destroy()
 	, # destroy
+	show: ->
+		$(@el).show()
+	, # show
+	hide: ->
+		$(@el).hide()
+	, # hide
 # StickView
