@@ -41,7 +41,6 @@ Backbone.sync = (method, model, options) ->
 	# For older servers, emulate HTTP by mimicking the HTTP method with `_method`
 	# And an `X-HTTP-Method-Override` header.
 	if (Backbone.emulateHTTP)
-		alert("emulate HTTP")
 		if (type is 'PUT' or type is 'DELETE')
 			if (Backbone.emulateJSON) 
 				params.data._method = type
@@ -295,23 +294,23 @@ class StickiesCollection extends Backbone.Collection
 	activate: ->
 		@fetch({
 			url: @url + "?offset=0&limit=50" ,
-			success: (model, responses) ->
+			success: (model, responses) =>
 				for response in responses
 					sticky = new StickyModel( response )
 					sticky.show()
-					model.push sticky
+					@push sticky
 				# for
-				Flash.show( "Loaded #{responses.length} stickies from the server", "info")
+				Flash.show( "Loaded #{responses.length} stickies from the server into #{JSON.stringify this}", "info")
 			, # success
 			error: (response) ->
-				Flash.show( "Oh no, #{JSON.stringify response}", "error" )
+				Flash.show( "Oh no, stickies collection fetch error #{JSON.stringify response}", "error" )
 			, # error
 		}) # fetch
 	, # activate
 	deactivate: ->
-		for sticky in this
-			sticky.hide()
-		@reset()
+		_.each( this.toArray(), (sticky) -> 
+			sticky.deactivate()
+		) # forEach
 	, # deactivate
 # StickiesCollection
 
@@ -325,7 +324,6 @@ class PageModel extends Backbone.Model
 	name: "page" ,
 	initialize: ->
 		@stickies = new StickiesCollection()
-		@stickies.url = "/pages/#{@id}/stickies"
 	, # initialize
 	
 	new_sticky: (data, callback) ->
@@ -355,6 +353,7 @@ class PageModel extends Backbone.Model
 	activate: ->
 		$("title").html this.get("title")
 		@stickies.activate()
+		
 		Backbone.Events.trigger "page:activate", this.id
 	, # activate	
 	
@@ -368,7 +367,6 @@ class PageModel extends Backbone.Model
 # Modal Form class
 class ModalView extends Backbone.View
 	@input_sanitizor: (string) ->
-		alert string
 		# Escapes html by escaping brackets
 		str = escape string
 		# This has to be done in a while loop because javascript regex is fucking stupid
@@ -384,7 +382,7 @@ class ModalView extends Backbone.View
 			{ name: "content", category: "text", placeholder: "My comment...", style: "input-large" }	 ,
 		], # comment
 		login: [ 
-			{ name: "username", category: "text", placeholder: "Username or email...", style: "input-large" }	 ,
+			{ name: "email", category: "text", placeholder: "Username or email...", style: "input-large" }	 ,
 			{ name: "password", category: "password", placeholder: "", style: "input-large" }
 		], # login
 		code: [
@@ -399,6 +397,9 @@ class ModalView extends Backbone.View
 			{ name: "image", category: "url", placeholder: "Link to your image...", style: "input-xlarge" }	,
 			{ name: "caption", category: "text", placeholder: "Image caption", style: "input-xlarge" }	
 		] , # image
+		page: [ 
+			{ name: "title", category: "text", placeholder: "Untitled...", style: "input-xlarge" } 
+		] , # page
 	, # modal_content
 	@generate_form: (category) ->
 		label = _.template "<label for='<%= name %>' class='control-label'><%= name %></label>"
@@ -407,6 +408,8 @@ class ModalView extends Backbone.View
 		output = "<fieldset><div class='control-group'>"
 		things = ModalView.modal_contents[category]
 		switch category
+			when "page"
+				output += "#{label things[0]} #{input things[0] }"
 			when "comment"
 				output += "#{label things[0]}#{input things[0]}" 	
 				output += "#{label things[1]}#{textarea things[1]}" 
@@ -433,7 +436,8 @@ class ModalView extends Backbone.View
 		"login" : { "modal_title" : "Owner Login", "modal_body" : ModalView.generate_form("login"), "modal_action" : "Login" } ,
 		"text" : { "modal_title" : "Text Sticky", "modal_body" : ModalView.generate_form("text"), "modal_action" : "Write" } ,
 		"image" : { "modal_title" : "Image Sticky", "modal_body" : ModalView.generate_form("image"), "modal_action" : "Link" } ,
-		"code" : { "modal_title" : "Code Block", "modal_body" : ModalView.generate_form("code"), "modal_action" : "Post" }
+		"code" : { "modal_title" : "Code Block", "modal_body" : ModalView.generate_form("code"), "modal_action" : "Post" } ,
+		"page" : { "modal_title" : "New Page", "modal_body" : ModalView.generate_form("page"), "modal_action" : "Create" }
 	, # @form
 	tagName: "div" ,
 	className: "modal hide fade" ,
@@ -465,7 +469,19 @@ class ModalView extends Backbone.View
 	, # modal_action
 	render: (category)->
 		# Step 1: Generate the forms
-		$(@el).html @template(ModalView.form[category])
+		switch category
+			when "pages"
+				$(@el).html("
+					<div class='modal-header'>
+						<button type='button' class='close' data-dismiss='modal' aria-hidden='true'>&times;</button>
+						<h3 id='myModalLabel'>Pages Index</h3>
+					</div>
+					<div class='modal-body'>
+						<ul class='page-index'></ul>
+					</div>")		
+			else
+				$(@el).html @template(ModalView.form[category])
+		# switch
 		@category = category
 				
 		# Step 2: Attach to the body
@@ -485,6 +501,21 @@ class ModalView extends Backbone.View
 		# Step 5: GTFO	
 		return "#{category}-modal"
 	, # render
+	generate_pages_index: (response) ->
+		template = _.template("<li>
+				<h4><a href='#<%= id %>' data-dismiss='modal' aria-hidden='true' class='close' content='<%= id %>'><%= title %></a></h4>
+				<small><%= created_at %></small>
+		</li>")
+		this.$(".page-index").html("")
+		for page in response
+			this.$(".page-index").append( template(page) )
+			this.$("a[href='##{page['id']}']").click( ((id) ->
+				return ->
+					Backbone.Events.trigger "modal:switch_page", id
+				# return
+			)(page['id']) )  # click
+		# for
+	# generate_pages_index
 # ModalView
 
 
@@ -523,11 +554,15 @@ class ToolbarView extends Backbone.View
 		for button in @buttons
 			$(@el).append @template(button)
 			switch button["id"]
-				when "comment", "login","code","image", "text"
+				when "comment", "login","code","image", "text", "page"
 					modal = new ModalView()
 					m_id = modal.render button['id']
 					this.$("#btn-#{button['id']}").attr "data-target", "##{m_id}"
 				# when
+				when "pages"
+					@pages_modal = new ModalView()
+					m_id = @pages_modal.render "pages"
+					this.$("#btn-pages").attr "data-target", "##{m_id}"
 			# switch
 		# for
 			
@@ -540,6 +575,9 @@ class ToolbarView extends Backbone.View
 		# Step 3: Listen to events
 		@unadminify()
 		Backbone.Events.on( "session:login", @adminify )
+		Backbone.Events.on( "desk:pages_fetch", (response) => 
+			@pages_modal.generate_pages_index( response )
+		) # desk:pages_fetch
 	, # render
 	
 	adminify: =>
@@ -560,15 +598,30 @@ class ToolbarView extends Backbone.View
 	# Modal Section
 	###
 	pages_modal: ->
-		
+		##
+		# Note to future devs (probably just me... except in the future):
+		# The event pathing goes as follows (we pobably should use callbacks)
+		# toolbar:pages - caught by desk in intiailize function
+		# desk:pages_fetch - caught by toolbar in render function
+		# modal:switch_page - caught by desk in initialize function
+		##
+		Backbone.Events.trigger "toolbar:pages"
 	, # pages_modal
 	
 	page_modal: ->
-	
+		if @mode is "admin"
+			@open_modal( "page" )
+		else
+			Flash.show( "You need to be the owner of this blog in order to add new pages", "warning" )
+		# if-else	
 	, # page_modal
 	
 	login_modal: ->
-		@open_modal( "login" )
+		if @mode is "normal"
+			@open_modal( "login" )
+		else
+			Flash.show( "You are already logged in!", "warning" )
+		# if-else
 	, # login_modal
 	
 	comment_modal: ->
@@ -626,22 +679,54 @@ class DeskModel extends Backbone.Model
 			# data
 		, # code
 		login: (input) ->
-			
-		# login
+			data =
+				email: input['email'] ,
+				password: input['password'] ,
+				category: 'login'
+		, # login
+		page: (input) ->
+			data =
+				title: input['title']
+		, # page
 	, # action_callbacks
 	initialize: ->
 		# Step 1: Initialize expected variables
 		@toolbar = new ToolbarView()
 		@active_page = new PageModel()
-		@pages = [@active_page]
+		@pages = []
+		@pages_hash = {}
 		@toolbar.render()
 		@establish_connection()
 		
 		# Step 2: Register events
-		Backbone.Events.on "modal:action", (input) ->
+		Backbone.Events.on "modal:action", (input) =>
 			data = DeskModel.action_processor[input['category']]( input )
-			@active_page.new_sticky data
+			switch input['category']
+				when 'page'
+					@new_page( data )
+				when 'login'
+					Session.login( input['email'], input['password'] )
+				else
+					@active_page.new_sticky data	
+			# switch
 		# on modal:action
+		Backbone.Events.on "toolbar:pages", =>
+			@fetch( { 
+				url: "/pages?offset=0&limit=50" ,
+				success: (model, response) ->
+					if response?
+						Backbone.Events.trigger "desk:pages_fetch", response
+					else
+						Flash.show( "Oh no, we ran into a problem trying to load pages index", "error")
+				, # success
+				error: (response) ->
+					Flash.show( "Oh no, we ran into a problem trying to load pages index #{JSON.stringify response}", "error")
+				, # error
+			} ); # fetch
+		# on toolbar:pages
+		Backbone.Events.on "modal:switch_page", (id) =>
+			@switch_to(id)
+		# on switch_page
 	, # initialize
 	
 	# Loads the latest page (if there is one) on initialization
@@ -662,11 +747,34 @@ class DeskModel extends Backbone.Model
 		}) # fetch
 	, # establish_connection
 	
+	switch_to: (id) ->
+		if @pages_hash[id]?
+			@goto_page( @pages_hash[id] )
+		else
+			page = new PageModel()
+			page.id = id
+			page.url = "/pages/#{id}"
+			page.stickies.url = "/pages/#{id}/stickies"
+			page.fetch({
+				success: (model, response) =>
+					page.set "title", response['title']
+					@pages_hash[id] = @pages.length
+					@pages.push page
+					@switch_to( id )
+				, # success
+				error: (response) ->
+					Flash.show( "The ID #{id} you requested isn't cached on your local machine and isn't in the db.", "error" )
+				# error
+			}) # fetch
+	, # switch_to
+	
 	goto_page: (number) ->
-		if number < @pages.length
+		if !number? or number < @pages.length 
 			@active_page.deactivate()
-			@active_page = @pages[number]
+			@active_page = @pages[number] if number?
+			@active_page = @pages[@pages.length - 1] unless number?
 			@active_page.activate()
+			Flash.show( "We have switched to page #{@active_page.get 'title'}", "info" )
 		else
 			Flash.show( "404: the page you requested #{number} doesn't exist", "warning" )
 		# if-else
@@ -679,14 +787,18 @@ class DeskModel extends Backbone.Model
 		page.save( page, {
 			success: (model, response) ->
 				model.set response, { "silent" : true }
-				desk.active_page = model
+				model.id = response['id']
+				model.user_id = response['user_id']
+				model.stickies.url = "/pages/#{response['id']}/stickies"
+				desk.pages_hash[response['id']] = desk.pages.length
 				desk.pages.push model
+				desk.goto_page()
 				Flash.show( "New Page Created! #{JSON.stringify response}", "success" )
-				callback()
+				callback() if callback?
 			, # success
 			error: (response) ->
 				Flash.show( "Dammit! New Page Creation Failed #{JSON.stringify response}", "error")
-				callback()
+				callback() if callback?
 			# error
 		} ) # save
 	, # new_page

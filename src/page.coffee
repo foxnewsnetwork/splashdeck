@@ -7,7 +7,6 @@ class PageModel extends Backbone.Model
 	name: "page" ,
 	initialize: ->
 		@stickies = new StickiesCollection()
-		@stickies.url = "/pages/#{@id}/stickies"
 	, # initialize
 	
 	new_sticky: (data, callback) ->
@@ -37,6 +36,7 @@ class PageModel extends Backbone.Model
 	activate: ->
 		$("title").html this.get("title")
 		@stickies.activate()
+		
 		Backbone.Events.trigger "page:activate", this.id
 	, # activate	
 	

@@ -4,22 +4,22 @@ class StickiesCollection extends Backbone.Collection
 	activate: ->
 		@fetch({
 			url: @url + "?offset=0&limit=50" ,
-			success: (model, responses) ->
+			success: (model, responses) =>
 				for response in responses
 					sticky = new StickyModel( response )
 					sticky.show()
-					model.push sticky
+					@push sticky
 				# for
-				Flash.show( "Loaded #{responses.length} stickies from the server", "info")
+				Flash.show( "Loaded #{responses.length} stickies from the server into #{JSON.stringify this}", "info")
 			, # success
 			error: (response) ->
-				Flash.show( "Oh no, #{JSON.stringify response}", "error" )
+				Flash.show( "Oh no, stickies collection fetch error #{JSON.stringify response}", "error" )
 			, # error
 		}) # fetch
 	, # activate
 	deactivate: ->
-		for sticky in this
-			sticky.hide()
-		@reset()
+		_.each( this.toArray(), (sticky) -> 
+			sticky.deactivate()
+		) # forEach
 	, # deactivate
 # StickiesCollection

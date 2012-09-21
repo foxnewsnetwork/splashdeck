@@ -41,7 +41,6 @@ Backbone.sync = (method, model, options) ->
 	# For older servers, emulate HTTP by mimicking the HTTP method with `_method`
 	# And an `X-HTTP-Method-Override` header.
 	if (Backbone.emulateHTTP)
-		alert("emulate HTTP")
 		if (type is 'PUT' or type is 'DELETE')
 			if (Backbone.emulateJSON) 
 				params.data._method = type

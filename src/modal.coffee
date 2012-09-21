@@ -1,7 +1,6 @@
 # Modal Form class
 class ModalView extends Backbone.View
 	@input_sanitizor: (string) ->
-		alert string
 		# Escapes html by escaping brackets
 		str = escape string
 		# This has to be done in a while loop because javascript regex is fucking stupid
@@ -17,7 +16,7 @@ class ModalView extends Backbone.View
 			{ name: "content", category: "text", placeholder: "My comment...", style: "input-large" }	 ,
 		], # comment
 		login: [ 
-			{ name: "username", category: "text", placeholder: "Username or email...", style: "input-large" }	 ,
+			{ name: "email", category: "text", placeholder: "Username or email...", style: "input-large" }	 ,
 			{ name: "password", category: "password", placeholder: "", style: "input-large" }
 		], # login
 		code: [
@@ -32,6 +31,9 @@ class ModalView extends Backbone.View
 			{ name: "image", category: "url", placeholder: "Link to your image...", style: "input-xlarge" }	,
 			{ name: "caption", category: "text", placeholder: "Image caption", style: "input-xlarge" }	
 		] , # image
+		page: [ 
+			{ name: "title", category: "text", placeholder: "Untitled...", style: "input-xlarge" } 
+		] , # page
 	, # modal_content
 	@generate_form: (category) ->
 		label = _.template "<label for='<%= name %>' class='control-label'><%= name %></label>"
@@ -40,6 +42,8 @@ class ModalView extends Backbone.View
 		output = "<fieldset><div class='control-group'>"
 		things = ModalView.modal_contents[category]
 		switch category
+			when "page"
+				output += "#{label things[0]} #{input things[0] }"
 			when "comment"
 				output += "#{label things[0]}#{input things[0]}" 	
 				output += "#{label things[1]}#{textarea things[1]}" 
@@ -66,7 +70,8 @@ class ModalView extends Backbone.View
 		"login" : { "modal_title" : "Owner Login", "modal_body" : ModalView.generate_form("login"), "modal_action" : "Login" } ,
 		"text" : { "modal_title" : "Text Sticky", "modal_body" : ModalView.generate_form("text"), "modal_action" : "Write" } ,
 		"image" : { "modal_title" : "Image Sticky", "modal_body" : ModalView.generate_form("image"), "modal_action" : "Link" } ,
-		"code" : { "modal_title" : "Code Block", "modal_body" : ModalView.generate_form("code"), "modal_action" : "Post" }
+		"code" : { "modal_title" : "Code Block", "modal_body" : ModalView.generate_form("code"), "modal_action" : "Post" } ,
+		"page" : { "modal_title" : "New Page", "modal_body" : ModalView.generate_form("page"), "modal_action" : "Create" }
 	, # @form
 	tagName: "div" ,
 	className: "modal hide fade" ,
@@ -98,7 +103,19 @@ class ModalView extends Backbone.View
 	, # modal_action
 	render: (category)->
 		# Step 1: Generate the forms
-		$(@el).html @template(ModalView.form[category])
+		switch category
+			when "pages"
+				$(@el).html("
+					<div class='modal-header'>
+						<button type='button' class='close' data-dismiss='modal' aria-hidden='true'>&times;</button>
+						<h3 id='myModalLabel'>Pages Index</h3>
+					</div>
+					<div class='modal-body'>
+						<ul class='page-index'></ul>
+					</div>")		
+			else
+				$(@el).html @template(ModalView.form[category])
+		# switch
 		@category = category
 				
 		# Step 2: Attach to the body
@@ -118,4 +135,19 @@ class ModalView extends Backbone.View
 		# Step 5: GTFO	
 		return "#{category}-modal"
 	, # render
+	generate_pages_index: (response) ->
+		template = _.template("<li>
+				<h4><a href='#<%= id %>' data-dismiss='modal' aria-hidden='true' class='close' content='<%= id %>'><%= title %></a></h4>
+				<small><%= created_at %></small>
+		</li>")
+		this.$(".page-index").html("")
+		for page in response
+			this.$(".page-index").append( template(page) )
+			this.$("a[href='##{page['id']}']").click( ((id) ->
+				return ->
+					Backbone.Events.trigger "modal:switch_page", id
+				# return
+			)(page['id']) )  # click
+		# for
+	# generate_pages_index
 # ModalView

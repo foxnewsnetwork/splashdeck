@@ -33,11 +33,15 @@ class ToolbarView extends Backbone.View
 		for button in @buttons
 			$(@el).append @template(button)
 			switch button["id"]
-				when "comment", "login","code","image", "text"
+				when "comment", "login","code","image", "text", "page"
 					modal = new ModalView()
 					m_id = modal.render button['id']
 					this.$("#btn-#{button['id']}").attr "data-target", "##{m_id}"
 				# when
+				when "pages"
+					@pages_modal = new ModalView()
+					m_id = @pages_modal.render "pages"
+					this.$("#btn-pages").attr "data-target", "##{m_id}"
 			# switch
 		# for
 			
@@ -50,6 +54,9 @@ class ToolbarView extends Backbone.View
 		# Step 3: Listen to events
 		@unadminify()
 		Backbone.Events.on( "session:login", @adminify )
+		Backbone.Events.on( "desk:pages_fetch", (response) => 
+			@pages_modal.generate_pages_index( response )
+		) # desk:pages_fetch
 	, # render
 	
 	adminify: =>
@@ -70,15 +77,30 @@ class ToolbarView extends Backbone.View
 	# Modal Section
 	###
 	pages_modal: ->
-		
+		##
+		# Note to future devs (probably just me... except in the future):
+		# The event pathing goes as follows (we pobably should use callbacks)
+		# toolbar:pages - caught by desk in intiailize function
+		# desk:pages_fetch - caught by toolbar in render function
+		# modal:switch_page - caught by desk in initialize function
+		##
+		Backbone.Events.trigger "toolbar:pages"
 	, # pages_modal
 	
 	page_modal: ->
-	
+		if @mode is "admin"
+			@open_modal( "page" )
+		else
+			Flash.show( "You need to be the owner of this blog in order to add new pages", "warning" )
+		# if-else	
 	, # page_modal
 	
 	login_modal: ->
-		@open_modal( "login" )
+		if @mode is "normal"
+			@open_modal( "login" )
+		else
+			Flash.show( "You are already logged in!", "warning" )
+		# if-else
 	, # login_modal
 	
 	comment_modal: ->
