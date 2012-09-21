@@ -139,6 +139,7 @@ class Session extends Backbone.Model
 
 
 class StickyModel extends Backbone.Model
+	@debug_counter: 0 ,
 	@attr_accessible: [ 
 		'x','y','width','height','category','content','metadata'
 	] , # attr_accessible
@@ -161,6 +162,7 @@ class StickyModel extends Backbone.Model
 		return data
 	, # serialize
 	initialize: ->
+		StickyModel.debug_counter += 1
 		unless @get("x")? and @get("y")?
 			position = 
 				x: 5 + 65 * Math.random() ,
@@ -170,15 +172,16 @@ class StickyModel extends Backbone.Model
 		if @get( "metadata" ) is ""
 			switch @get "category"
 				when "image"
-					@set "metadata", "No caption available"
+					@set( { "metadata" : "No caption available" }, {silent: true} )
 				when "code"
-					@set "metadata", "English"
+					@set( { "metadata" : "English" }, {silent: true} )
 				when "comment"
-					@set "metadata", "anonymous"
+					@set( { "metadata" : "anonymous" }, {silent: true} )
 			# switch
 		@setup_view()
 	, # initialize
 	setup_view: ->
+		
 		@view = new StickyView( model : this )
 		@view.update_callback = (data) =>
 			@save( data ) if @id?
@@ -195,7 +198,7 @@ class StickyModel extends Backbone.Model
 
 class StickyView extends Backbone.View
 	tagName: "div" ,
-	className: "sticky-note ui-widget-content" ,
+	className: "sticky-note ui-dialog ui-widget ui-widget-content ui-corner-all ui-draggable ui-resizable" ,
 	template: 
 		'comment' : _.template("<div class='resize-layer comment_block' style='display: inline-block;'>
 			<button type='button' class='close' rel='tooltip' title='destroy'>&times;</button>
@@ -240,7 +243,7 @@ class StickyView extends Backbone.View
 					this.$("[rel='tooltip']").tooltip()
 					if @model.get( "category" ) == "code"
 						hljs.highlightBlock( this.$("code").get()[0] )
-					this.$(".resize-layer").resizable
+					$(@el).resizable
 						"alsoResize" : this.$(".sticky_content") ,
 						"stop" : (e, ui) =>
 							@update_callback @serialize()
@@ -277,6 +280,7 @@ class StickyView extends Backbone.View
 	, # serializes only the positions (because content etc. isn't editable)
 	destroy: (e) ->
 		@remove()
+
 		@model.destroy()
 	, # destroy
 	show: ->
@@ -294,11 +298,13 @@ class StickiesCollection extends Backbone.Collection
 	activate: ->
 		@fetch({
 			url: @url + "?offset=0&limit=50" ,
-			success: (model, responses) =>
-				for response in responses
-					sticky = new StickyModel( response )
-					sticky.show()
-					@push sticky
+			success: (models, responses) =>
+				for k in [1..models.length]
+					model = models.at( k-1 )
+					model.id = model.get "id"
+					model.page_id = model.get "page_id"
+					model.user_id = model.get "user_id"
+					model.url = @url + "/#{model.id}"
 				# for
 				Flash.show( "Loaded #{responses.length} stickies from the server into #{JSON.stringify this}", "info")
 			, # success
@@ -352,6 +358,7 @@ class PageModel extends Backbone.Model
 
 	activate: ->
 		$("title").html this.get("title")
+		
 		@stickies.activate()
 		
 		Backbone.Events.trigger "page:activate", this.id
@@ -733,9 +740,16 @@ class DeskModel extends Backbone.Model
 	establish_connection: (callback) ->
 		@active_page.fetch({
 			url: "/" ,
-			success: (model, response) ->
+			success: (model, response) =>
 				if response? and response['id']?
-					model.set response 
+					@active_page.set 'title', response['title']
+					@active_page.id = response['id']
+					@active_page.user_id = response['user_id']
+					@active_page.url = "/pages/#{response['id']}"
+					@active_page.stickies.url = model.url + "/stickies"
+					@pages_hash[ response['id'] ] = @pages.length
+					@pages.push @active_page
+					@switch_to response['id']
 				else
 					Flash.show( "WARNING: The owner of this blog hasn't written anything yet!" , "warning" )
 				callback() if callback?
@@ -805,132 +819,7 @@ class DeskModel extends Backbone.Model
 # DeskModel
 
 
-mocha.setup("bdd")
-run_test_suite = ->
-	mocha.globals( ['desktop'] ).run()
-# run_test_suite
-
-
-# Globals (I guess)
-desktop = new DeskModel()
-session = null
-$( "document" ).ready -> 
-	session = Session.login( "admin@admin.admin", "123456789", run_test_suite )
-# test-starter
-
-describe "Desk Model", ->
-	describe "sanity test", ->
-		it "should not be null", ->
-			expect(desktop).to.be.ok()
-		# it
-		it "should have a proper toolbar", ->
-			expect(desktop.toolbar).to.be.ok()
-		# it
-		it "should have an active paper", ->
-			expect(desktop.active_page).to.be.ok()
-		# it
-	# sanity test
-	describe "new pages", ->
-		it "should create a new page", (done) ->
-			page_data = { title: "My Test Page" }
-			desktop.new_page page_data, ->
-				flag1 = desktop.active_page.get "title" is "My Test Page"
-				flag2 = desktop.active_page.get("id") > 0
-				done(flag1 and flag2)
-			# new_page
-		# it
-	# new pages
-	describe "integration", ->
-		beforeEach (done) ->
-			@code = 
-				category: "code" ,
-				language: "Ruby" ,
-				code: "faggots.each do |faggot| faggot.be_gay end"
-		# beforeEach
-		it "should be tested but I don't know how"
-	# integration
-# Desk Model
-
-
-toolbar = desktop.toolbar
-
-describe "Toolbar View", ->
-	describe "sanity test", ->
-		it "should access the toolbar through the desktop global" , ->
-			expect(toolbar).to.be.ok()
-		# it
-	# sanity test
-	describe "default behavior", ->
-		it "should default to being in admin mode", ->
-			expect(toolbar.mode).to.be.equal( "admin" )
-		# it
-	# defalt behavior
-# Toolbar View
-
-
-###
-# Exposed Globals:
-# desktop, toolbar, session
-###
-
-describe "Session Model", ->
-	describe "sanity test", ->
-		it "should have null admin by default", ->
-			expect(Session).to.be.ok()
-		# it
-	# sanity test
-	describe "login", ->
-		it "should create a session through login", ->
-			expect( session ).to.be.ok()
-		# it
-		it "should make the toolbar go into admin mode", ->
-			expect( toolbar.mode ).to.be.equal( "admin" )
-		# it
-	# login
-# Session Model
-
-
-
-# Globals
-page = desktop.active_page
-
-describe "Page Model", ->
-	describe "Sanity Test", ->
-		it "should not be null", ->
-			expect(page).to.be.ok()
-		# it
-	# sanity test
-	describe "integration", ->
-		beforeEach (done) ->
-			@code =
-				category : "code" ,
-				content : "Hello World" ,
-				metadata : "mocha"
-			@text =
-				category : "text" ,
-				content : "Test Blog Entry" ,
-				metadata : "Alice McTest" 
-			@image =
-				category : "image" ,
-				content : "http://i299.photobucket.com/albums/mm281/foxnewsnetwork/logo.png" ,
-				metadata : "Test caption"
-			done()
-		# beforeEach
-		it "should make a code block", (done) ->
-			sticky = page.new_sticky @code, ->
-				expect( sticky.page_id ).to.equal page.id
-				done() 			
-			# sticky
-		# it
-		it "should make a text block", (done) ->
-			sticky = page.new_sticky @text, ->
-				expect( sticky.page_id ).to.equal page.id
-				done()
-		# it
-		it "should make a text block", (done) ->
-			sticky = page.new_sticky @image, ->
-				expect( sticky.page_id ).to.equal page.id
-				done()
-		# it
-	# integration
-# Page model
+desktop = null unless desktop?
+$("document").ready ->
+	$("div#no-javascript").hide()
+	desktop = new DeskModel() unless desktop?

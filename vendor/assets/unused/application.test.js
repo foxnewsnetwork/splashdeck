@@ -17,4 +17,7 @@
 //= require bootstrap
 //= require underscore-min
 //= require backbone-min
+//= require mocha
+//= require expect
+//= require chai
 //= require_tree .

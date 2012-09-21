@@ -1,5 +1,6 @@
 
 class StickyModel extends Backbone.Model
+	@debug_counter: 0 ,
 	@attr_accessible: [ 
 		'x','y','width','height','category','content','metadata'
 	] , # attr_accessible
@@ -22,6 +23,7 @@ class StickyModel extends Backbone.Model
 		return data
 	, # serialize
 	initialize: ->
+		StickyModel.debug_counter += 1
 		unless @get("x")? and @get("y")?
 			position = 
 				x: 5 + 65 * Math.random() ,
@@ -31,15 +33,16 @@ class StickyModel extends Backbone.Model
 		if @get( "metadata" ) is ""
 			switch @get "category"
 				when "image"
-					@set "metadata", "No caption available"
+					@set( { "metadata" : "No caption available" }, {silent: true} )
 				when "code"
-					@set "metadata", "English"
+					@set( { "metadata" : "English" }, {silent: true} )
 				when "comment"
-					@set "metadata", "anonymous"
+					@set( { "metadata" : "anonymous" }, {silent: true} )
 			# switch
 		@setup_view()
 	, # initialize
 	setup_view: ->
+		
 		@view = new StickyView( model : this )
 		@view.update_callback = (data) =>
 			@save( data ) if @id?
@@ -56,7 +59,7 @@ class StickyModel extends Backbone.Model
 
 class StickyView extends Backbone.View
 	tagName: "div" ,
-	className: "sticky-note ui-widget-content" ,
+	className: "sticky-note ui-dialog ui-widget ui-widget-content ui-corner-all ui-draggable ui-resizable" ,
 	template: 
 		'comment' : _.template("<div class='resize-layer comment_block' style='display: inline-block;'>
 			<button type='button' class='close' rel='tooltip' title='destroy'>&times;</button>
@@ -101,7 +104,7 @@ class StickyView extends Backbone.View
 					this.$("[rel='tooltip']").tooltip()
 					if @model.get( "category" ) == "code"
 						hljs.highlightBlock( this.$("code").get()[0] )
-					this.$(".resize-layer").resizable
+					$(@el).resizable
 						"alsoResize" : this.$(".sticky_content") ,
 						"stop" : (e, ui) =>
 							@update_callback @serialize()
@@ -138,6 +141,7 @@ class StickyView extends Backbone.View
 	, # serializes only the positions (because content etc. isn't editable)
 	destroy: (e) ->
 		@remove()
+
 		@model.destroy()
 	, # destroy
 	show: ->

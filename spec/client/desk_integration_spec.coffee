@@ -1,5 +1,5 @@
 # Globals (I guess)
-desktop = new DeskModel()
+desktop = new DeskModel() unless desktop?
 session = null
 $( "document" ).ready -> 
 	session = Session.login( "admin@admin.admin", "123456789", run_test_suite )

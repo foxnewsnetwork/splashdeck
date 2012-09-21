@@ -35,6 +35,7 @@ class PageModel extends Backbone.Model
 
 	activate: ->
 		$("title").html this.get("title")
+		
 		@stickies.activate()
 		
 		Backbone.Events.trigger "page:activate", this.id

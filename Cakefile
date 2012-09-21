@@ -11,7 +11,8 @@ appFiles = [
 	'page' ,
 	'modal' ,
 	'toolbar',
-	'desk' 
+	'desk' ,
+	'main'
 ]
 
 testFiles = [
@@ -46,7 +47,7 @@ task "build", "Builds the client side coffee code and dumps it into the #{output
 	app_files = appFiles.map (file) -> "#{inputDir}/#{file}" 
 	console.log "Processing started on the following app files #{app_files}"
 	process_files app_files, (contents) ->
-		fs.writeFile "#{outputDir}/app_production.coffee", contents, "utf8", (err) ->
+		fs.writeFile "#{outputDir}/app_production.coffee", contents.join("\n\n"), "utf8", (err) ->
 			throw err if err
 			console.log( "Finished concatenating the file" )
 		# write	

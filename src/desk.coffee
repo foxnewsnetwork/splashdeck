@@ -84,9 +84,16 @@ class DeskModel extends Backbone.Model
 	establish_connection: (callback) ->
 		@active_page.fetch({
 			url: "/" ,
-			success: (model, response) ->
+			success: (model, response) =>
 				if response? and response['id']?
-					model.set response 
+					@active_page.set 'title', response['title']
+					@active_page.id = response['id']
+					@active_page.user_id = response['user_id']
+					@active_page.url = "/pages/#{response['id']}"
+					@active_page.stickies.url = model.url + "/stickies"
+					@pages_hash[ response['id'] ] = @pages.length
+					@pages.push @active_page
+					@switch_to response['id']
 				else
 					Flash.show( "WARNING: The owner of this blog hasn't written anything yet!" , "warning" )
 				callback() if callback?
