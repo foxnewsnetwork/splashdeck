@@ -23954,8 +23954,8 @@ b,c){var d;d=b&&b.hasOwnProperty("constructor")?b.constructor:function(){a.apply
       StickyModel.debug_counter += 1;
       if (!((this.get("x") != null) && (this.get("y") != null))) {
         position = {
-          x: 5 + 65 * Math.random(),
-          y: 5 + 65 * Math.random()
+          x: 0,
+          y: 0
         };
         this.set(position, {
           silent: true
@@ -24023,17 +24023,13 @@ b,c){var d;d=b&&b.hasOwnProperty("constructor")?b.constructor:function(){a.apply
 
     StickyView.prototype.tagName = "div";
 
-    StickyView.prototype.className = "sticky-note ui-dialog ui-widget ui-widget-content ui-corner-all ui-draggable ui-resizable";
+    StickyView.prototype.className = "sticky-note";
 
     StickyView.prototype.template = {
-      'comment': _.template("<div class='resize-layer comment_block' style='display: inline-block;'>			<button type='button' class='close' rel='tooltip' title='destroy'>&times;</button>			<p class='comment_person'><%= metadata %></p>			<p class='comment_content'><%= content %></p>		</div>"),
-      "text": _.template("<div class='resize-layer' style='display: inline-block;'>			<button type='button' class='close' rel='tooltip' title='destroy'>&times;</button>			<p class='sticky_content' style='<%= metadata %>'><%= content %></p>		</div>"),
-      "code": _.template("<div class='resize-layer' style='display: inline-block;'>			<button type='button' class='close' rel='tooltip' title='destroy'>&times;</button>			<pre class='sticky_content prettyprint linenums' rel='tooltip' title='<%= metadata %>'>				<code class='<%= metadata %>'><%= content %></code>			</pre>			</div>"),
-      "image": _.template("<div class='resize-layer' style='display: inline-block;'>			<button type='button' class='close' rel='tooltip' title='destroy'>&times;</button>			<img alt='some image' src='<%= content %>' class='sticky_content' rel='tooltip' title='<%= metadata %>'/>			</div>")
-    };
-
-    StickyView.prototype.events = {
-      "click .close": "destroy"
+      'comment': _.template("			<p class='comment_person'><%= metadata %></p>			<p class='comment_content'><%= content %></p>		"),
+      "text": _.template("			<p class='sticky_content' style='<%= metadata %>'><%= content %></p>		"),
+      "code": _.template("			<pre class='sticky_content prettyprint linenums' rel='tooltip' title='<%= metadata %>'>				<code class='<%= metadata %>'><%= content %></code>			</pre>			"),
+      "image": _.template("			<img alt='some image' src='<%= content %>' class='sticky_content' rel='tooltip' title='<%= metadata %>'/>			")
     };
 
     StickyView.prototype.parent = $("body");
@@ -24043,77 +24039,73 @@ b,c){var d;d=b&&b.hasOwnProperty("constructor")?b.constructor:function(){a.apply
     };
 
     StickyView.prototype.render = function() {
-      var css_prop, js_prop, _ref,
-        _this = this;
+      var _this = this;
       if (!(this.model != null)) {
         throw "Calling View Without a Model Error";
         return this;
       }
       if (!(this.ready != null)) {
+        $(this.el).append(this.template[this.model.get("category")](this.model.toJSON()));
+        this.parent.append($(this.el));
+        this.ready = true;
+        this.$("[rel='tooltip']").tooltip();
         switch (this.model.get("category")) {
-          case "text":
           case "code":
+            hljs.highlightBlock(this.$("code").get()[0]);
+            $(this.el).attr("title", "Code");
+            break;
           case "image":
+            $(this.el).attr("title", "Image");
+            break;
           case "comment":
-            $(this.el).append(this.template[this.model.get("category")](this.model.toJSON()));
-            $(this.el).css("position", "absolute");
-            $(this.el).css("display", "inline-block");
-            this.parent.append($(this.el));
-            this.ready = true;
-            this.$("[rel='tooltip']").tooltip();
-            if (this.model.get("category") === "code") {
-              hljs.highlightBlock(this.$("code").get()[0]);
-            }
-            $(this.el).resizable({
-              "alsoResize": this.$(".sticky_content"),
-              "stop": function(e, ui) {
-                _this.update_callback(_this.serialize());
-                return false;
-              }
-            });
-            $(this.el).draggable({
-              "stop": function(e, ui) {
-                _this.update_callback(_this.serialize());
-                return true;
-              }
-            });
+            $(this.el).attr("title", "Comment");
+            break;
+          case "text":
+            $(this.el).attr("title", this.model.get("metadata"));
             break;
           default:
             throw "Unsupported sticky type error";
         }
-      }
-      _ref = {
-        "left": "x",
-        "top": "y",
-        "width": "width",
-        "height": "height"
-      };
-      for (css_prop in _ref) {
-        js_prop = _ref[css_prop];
-        switch (css_prop) {
-          case "left":
-          case "top":
-            $(this.el).css(css_prop, this.model.toJSON()[js_prop] + "%");
-            break;
-          default:
-            $(this.el).css(css_prop, this.model.toJSON()[js_prop]);
-        }
+        $(this.el).dialog({
+          position: [this.model.get("x") * window.innerWidth / 100, this.model.get("y") * window.innerHeight / 100],
+          width: this.model.get("width"),
+          height: this.model.get("height"),
+          dragStop: function(event, ui) {
+            _this.update_callback({
+              "x": ui.position.left / window.innerWidth * 100,
+              "y": ui.position.top / window.innerHeight * 100
+            });
+            return true;
+          },
+          resizeStop: function(event, ui) {
+            _this.update_callback({
+              "width": ui.size.width,
+              "height": ui.size.height
+            });
+            return false;
+          },
+          close: function(event, ui) {
+            return _this.destroy(event);
+          }
+        });
       }
       return this;
     };
 
-    StickyView.prototype.serialize = function() {
+    StickyView.prototype.serialize = function(event, ui) {
+      alert("WARNING: DEPRECATED FUNCTION SERIALIZE CALLED!");
       return {
-        "x": this.el.offsetLeft / window.innerWidth * 100,
-        "y": this.el.offsetTop / window.innerHeight * 100,
-        "width": this.$(".sticky_content").css("width"),
-        "height": this.$(".sticky_content").css("height")
+        "x": ui.position.x / window.innerWidth * 100,
+        "y": ui.position.y / window.innerHeight * 100,
+        "width": $(this.el).css("width"),
+        "height": $(this.el).css("height")
       };
     };
 
     StickyView.prototype.destroy = function(e) {
       this.remove();
-      return this.model.destroy();
+      this.model.destroy();
+      return Flash.show("Got rid of that one (at least for now)!", "success");
     };
 
     StickyView.prototype.show = function() {

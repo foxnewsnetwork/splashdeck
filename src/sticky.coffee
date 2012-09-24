@@ -26,8 +26,8 @@ class StickyModel extends Backbone.Model
 		StickyModel.debug_counter += 1
 		unless @get("x")? and @get("y")?
 			position = 
-				x: 5 + 65 * Math.random() ,
-				y: 5 + 65 * Math.random()
+				x: 0 ,
+				y: 0
 			# position
 			@set( position, { silent: true } )
 		if @get( "metadata" ) is ""
@@ -59,31 +59,24 @@ class StickyModel extends Backbone.Model
 
 class StickyView extends Backbone.View
 	tagName: "div" ,
-	className: "sticky-note ui-dialog ui-widget ui-widget-content ui-corner-all ui-draggable ui-resizable" ,
+	className: "sticky-note" ,
 	template: 
-		'comment' : _.template("<div class='resize-layer comment_block' style='display: inline-block;'>
-			<button type='button' class='close' rel='tooltip' title='destroy'>&times;</button>
+		'comment' : _.template("
 			<p class='comment_person'><%= metadata %></p>
 			<p class='comment_content'><%= content %></p>
-		</div>") , # comment template
-		"text" : _.template("<div class='resize-layer' style='display: inline-block;'>
-			<button type='button' class='close' rel='tooltip' title='destroy'>&times;</button>
+		") , # comment template
+		"text" : _.template("
 			<p class='sticky_content' style='<%= metadata %>'><%= content %></p>
-		</div>") , # text template
-		"code" : _.template("<div class='resize-layer' style='display: inline-block;'>
-			<button type='button' class='close' rel='tooltip' title='destroy'>&times;</button>
+		") , # text template
+		"code" : _.template("
 			<pre class='sticky_content prettyprint linenums' rel='tooltip' title='<%= metadata %>'>
 				<code class='<%= metadata %>'><%= content %></code>
 			</pre>	
-		</div>") , # code template
-		"image" : _.template("<div class='resize-layer' style='display: inline-block;'>
-			<button type='button' class='close' rel='tooltip' title='destroy'>&times;</button>
+		") , # code template
+		"image" : _.template("
 			<img alt='some image' src='<%= content %>' class='sticky_content' rel='tooltip' title='<%= metadata %>'/>	
-		</div>") # picture template
+		") # picture template
 	, # templates
-	events :
-		"click .close" : "destroy"
-	, # events
 	parent: $( "body" ),
 	update_callback: (data) ->
 		throw "UPDATE CALLBACK NOT IMPLEMENTED YOU MORON ERROR"
@@ -94,55 +87,55 @@ class StickyView extends Backbone.View
 			return this
 		# if no model
 		if !@ready?
+			$(@el).append( @template[@model.get "category"](@model.toJSON()) )
+			@parent.append( $(@el) );
+			@ready = true
+			this.$("[rel='tooltip']").tooltip()
 			switch @model.get "category"
-				when "text", "code", "image", "comment"
-					$(@el).append( @template[@model.get "category"](@model.toJSON()) )
-					$(@el).css "position", "absolute"
-					$(@el).css "display", "inline-block"
-					@parent.append( $(@el) );
-					@ready = true
-					this.$("[rel='tooltip']").tooltip()
-					if @model.get( "category" ) == "code"
-						hljs.highlightBlock( this.$("code").get()[0] )
-					$(@el).resizable
-						"alsoResize" : this.$(".sticky_content") ,
-						"stop" : (e, ui) =>
-							@update_callback @serialize()
-							return false
-						# stop
-					# resizable
-					$(@el).draggable 
-						"stop" : (e, ui) =>
-							@update_callback @serialize()
-							return true
-						# stop
-					# draggable
+				when "code"
+					hljs.highlightBlock( this.$("code").get()[0] )
+					$(@el).attr "title", "Code"
+				when "image"
+					$(@el).attr "title", "Image"
+				when "comment"
+					$(@el).attr "title", "Comment"
+				when "text"
+					$(@el).attr "title", @model.get("metadata")
 				else
 					throw "Unsupported sticky type error"
 			# switch
+			$(@el).dialog(
+				position: [@model.get("x") * window.innerWidth / 100 , @model.get("y") * window.innerHeight / 100] ,
+				width: @model.get("width") ,
+				height: @model.get("height") ,
+				dragStop: (event, ui) =>
+					@update_callback( { "x" : ui.position.left / window.innerWidth  * 100, "y" : ui.position.top / window.innerHeight * 100 } )
+					return true
+				, # dragStop
+				resizeStop: (event, ui) =>
+					@update_callback( { "width" : ui.size.width , "height" : ui.size.height } ) 
+					return false
+				, # resizeStop
+				close: (event, ui) =>
+					@destroy event
+				# close
+			) # dialog
 		# if-else el
-		for css_prop, js_prop of { "left" : "x", "top" : "y", "width" : "width", "height" : "height" }
-			switch css_prop
-				when "left","top"
-					$(@el).css( css_prop, @model.toJSON()[js_prop] + "%")
-				else
-					$(@el).css( css_prop, @model.toJSON()[js_prop] )
-			# switch
-		# for
 		return this
 	, # render
-	serialize: () ->
-		{ 
-			"x" : @el.offsetLeft / window.innerWidth  * 100,
-			"y" : @el.offsetTop / window.innerHeight * 100 ,
-			"width" : this.$(".sticky_content").css( "width" ),
-			"height" : this.$(".sticky_content").css( "height" )
-		}
+	serialize: (event, ui) ->
+		alert "WARNING: DEPRECATED FUNCTION SERIALIZE CALLED!"
+		return { 
+			"x" : ui.position.x / window.innerWidth * 100 ,
+			"y" : ui.position.y / window.innerHeight * 100 ,
+			"width" : $(@el).css( "width" ) ,
+			"height" : $(@el).css( "height" )
+		} # return
 	, # serializes only the positions (because content etc. isn't editable)
 	destroy: (e) ->
 		@remove()
-
 		@model.destroy()
+		Flash.show "Got rid of that one (at least for now)!", "success"
 	, # destroy
 	show: ->
 		$(@el).show()

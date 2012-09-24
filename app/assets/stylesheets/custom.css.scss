@@ -25,6 +25,9 @@ code {
 }
 
 pre { 
+	display: inline-block;
+	margin-left: -1em;
+	margin-top: -1em;
 	width: 100%;
 	height: 100%;
 }
